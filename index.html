@@ -2,89 +2,82 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>SNT Datatrack | Gestión Inteligente</title>
+    <title>SNT Datatrack | Gestión Nacional</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
-        :root { --primary: #002b5c; --accent: #00d2ff; --success: #28a745; --bg: #f8f9fa; }
+        :root { --primary: #002b5c; --accent: #00d2ff; --success: #25d366; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Header */
-        .header { background: var(--primary); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1100; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-        .auth-zone { display: flex; gap: 10px; align-items: center; }
+        .header { background: var(--primary); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1100; }
+        .search-bar { background: white; padding: 10px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1050; display: flex; gap: 10px; }
         
-        /* Mapa */
         #mapAgenda { flex: 1; z-index: 1; }
 
-        /* Tarjeta Flotante de Cercanía */
         .floating-card { 
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 320px; background: white; border-radius: 15px; padding: 20px;
+            width: 300px; background: white; border-radius: 15px; padding: 20px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000;
-            display: none; border-left: 8px solid var(--accent);
+            display: none; border-top: 5px solid var(--accent);
         }
-        .floating-card h4 { margin: 0 0 5px 0; color: var(--primary); }
-        .floating-card p { margin: 2px 0; font-size: 14px; color: #444; }
-        .close-card { position: absolute; top: 10px; right: 10px; cursor: pointer; font-weight: bold; }
-
-        /* Modales */
-        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); overflow-y: auto; }
-        .modal-content { background: white; margin: 2% auto; padding: 25px; width: 90%; max-width: 500px; border-radius: 15px; }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; width: 100%; box-sizing: border-box; }
         
-        .btn { padding: 10px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
-        .btn-success { background: var(--success); }
-        .btn-accent { background: var(--accent); color: var(--primary); }
+        .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-excel { background: #217346; color: white; }
+        .btn-ws { background: var(--success); color: white; text-decoration: none; display: inline-block; margin-top: 10px; text-align: center; width: 100%; box-sizing: border-box; }
+
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
+        .modal-content { background: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 400px; border-radius: 12px; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
 <div class="header">
     <div><b>DATATRACK</b> | SNT Nacional</div>
-    <div class="auth-zone">
-        <button class="btn btn-accent" onclick="exportarExcel()">📊 Descargar Excel</button>
-        <button id="btnNew" class="btn" style="background:white; color:var(--primary); display:none;" onclick="abrirModal()">➕ Nuevo Técnico</button>
-        <input type="password" id="pass" placeholder="Clave" style="width: 80px; padding: 5px; border-radius: 4px; border: none;">
-        <button class="btn" style="background:#6c757d" onclick="login()">OK</button>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-excel" onclick="exportarExcel()">📊 Descargar Excel</button>
+        <button id="btnNew" class="btn" style="background:var(--accent); display:none;" onclick="abrirModal()">➕ Nuevo</button>
+        <input type="password" id="pass" placeholder="Clave Admin" style="width: 80px; margin:0; height: 30px;">
+        <button class="btn" style="background:#6c757d; color:white;" onclick="login()">OK</button>
     </div>
+</div>
+
+<div class="search-bar">
+    <input type="text" id="busc" placeholder="🔍 Filtrar por ciudad o nombre del técnico..." onkeyup="filtrarMapa()">
 </div>
 
 <div id="mapAgenda"></div>
 
 <div id="nearCard" class="floating-card">
-    <span class="close-card" onclick="this.parentElement.style.display='none'">×</span>
-    <small style="color:var(--success); font-weight: bold;">TÉCNICO MÁS CERCANO</small>
-    <h4 id="nName">-</h4>
-    <p id="nUbi">📍 -</p>
-    <p id="nEsp">🔧 -</p>
-    <p id="nDist" style="color:var(--accent); font-weight:bold; margin-top:8px;"></p>
-    <a id="nTel" href="#" style="display:block; margin-top:10px; color:var(--success); text-decoration:none; font-weight:bold;">📞 Llamar ahora</a>
+    <span style="float:right; cursor:pointer;" onclick="this.parentElement.style.display='none'">✖</span>
+    <small style="color:var(--primary); font-weight:bold;">TÉCNICO MÁS CERCANO</small>
+    <h3 id="nName" style="margin:5px 0">-</h3>
+    <p id="nUbi" style="margin:2px 0; font-size:14px;">📍 -</p>
+    <p id="nEsp" style="margin:2px 0; font-size:14px;">🔧 -</p>
+    <p id="nDist" style="color:blue; font-weight:bold; margin-top:5px; font-size:13px;"></p>
+    <a id="nWS" href="#" target="_blank" class="btn-ws">💬 WhatsApp</a>
 </div>
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3>Gestión de Personal</h3>
-        <div id="mapAdmin" style="height: 180px; border-radius: 10px; margin-bottom: 15px; background:#eee;"></div>
-        <div class="form-grid">
-            <input type="hidden" id="eIdx">
-            <input type="text" id="rNom" style="grid-column: span 2;" placeholder="Nombre Completo">
-            <input type="text" id="rUbi" placeholder="Ciudad">
-            <input type="text" id="rEsp" placeholder="Especialidad">
-            <input type="text" id="rTel" style="grid-column: span 2;" placeholder="Teléfono">
-            <input type="text" id="rLat" placeholder="Latitud" readonly>
-            <input type="text" id="rLng" placeholder="Longitud" readonly>
-        </div>
-        <button class="btn btn-success" style="width:100%; margin-top:20px; padding:15px;" onclick="guardar()">💾 GUARDAR EN NUBE</button>
-        <button class="btn" style="background:#666; width:100%; margin-top:8px;" onclick="cerrarModal()">CANCELAR</button>
+        <h3>Registrar Técnico</h3>
+        <div id="mapAdmin" style="height: 150px; background:#eee; margin-bottom:10px; border-radius:8px;"></div>
+        <input type="text" id="rNom" placeholder="Nombre completo">
+        <input type="text" id="rUbi" placeholder="Ciudad">
+        <input type="text" id="rEsp" placeholder="Especialidad">
+        <input type="text" id="rTel" placeholder="Teléfono (ej: 57310...)">
+        <input type="text" id="rLat" placeholder="Latitud" readonly>
+        <input type="text" id="rLng" placeholder="Longitud" readonly>
+        <button class="btn" style="background:var(--primary); color:white; width:100%;" onclick="guardar()">💾 GUARDAR</button>
+        <button class="btn" style="background:#666; color:white; width:100%; margin-top:5px;" onclick="cerrarModal()">CERRAR</button>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAjh_N7X4nBi6GPnWjxegPX2SKZf7PxW-w",
@@ -101,11 +94,10 @@
 
     onSnapshot(tecCol, (snap) => {
         window.dbTecnicos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        window.actualizarMapa();
+        window.actualizarMarcadores(window.dbTecnicos);
     });
 
     window.fbAdd = (data) => addDoc(tecCol, data);
-    window.fbUpdate = (id, data) => updateDoc(doc(db, "tecnicos_nacional", id), data);
 </script>
 
 <script>
@@ -115,43 +107,41 @@
 
     let mapAdmin, markerAdmin;
 
-    // Lógica de Técnico Cercano al hacer clic en el mapa
+    function filtrarMapa() {
+        const val = document.getElementById('busc').value.toLowerCase();
+        const filtrados = window.dbTecnicos.filter(t => 
+            t.nombre.toLowerCase().includes(val) || t.ubi.toLowerCase().includes(val)
+        );
+        actualizarMarcadores(filtrados);
+    }
+
+    function actualizarMarcadores(lista) {
+        map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
+        lista.forEach(t => {
+            L.marker([t.lat, t.lng]).addTo(map).bindPopup(`<b>${t.nombre}</b><br>${t.ubi}`);
+        });
+    }
+
     map.on('click', function(e) {
         if(window.dbTecnicos.length === 0) return;
-        
-        let cercano = null;
-        let minDist = Infinity;
-
+        let cercano = null; let minDist = Infinity;
         window.dbTecnicos.forEach(t => {
             let d = map.distance(e.latlng, [t.lat, t.lng]);
-            if(d < minDist) {
-                minDist = d;
-                cercano = t;
-            }
+            if(d < minDist) { minDist = d; cercano = t; }
         });
-
         if(cercano) {
             document.getElementById('nearCard').style.display = 'block';
             document.getElementById('nName').innerText = cercano.nombre;
             document.getElementById('nUbi').innerText = "📍 " + cercano.ubi;
             document.getElementById('nEsp').innerText = "🔧 " + cercano.esp;
-            document.getElementById('nDist').innerText = "A " + (minDist/1000).toFixed(2) + " km de tu clic";
-            document.getElementById('nTel').href = "tel:" + cercano.tel;
+            document.getElementById('nDist').innerText = "A " + (minDist/1000).toFixed(2) + " km de distancia";
+            document.getElementById('nWS').href = `https://wa.me/${cercano.tel}?text=Hola%20${cercano.nombre},%20tenemos%20un%20servicio%20cerca%20de%20tu%20ubicación.`;
         }
     });
 
-    function actualizarMapa() {
-        map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
-        window.dbTecnicos.forEach(t => {
-            L.marker([t.lat, t.lng]).addTo(map).bindPopup(`<b>${t.nombre}</b><br>${t.esp}`);
-        });
-    }
-
     function login() {
         if(document.getElementById('pass').value === "admin123") {
-            isAdmin = true;
-            document.getElementById('btnNew').style.display = 'block';
-            alert("Modo Admin: Ahora puedes agregar técnicos haciendo clic en el mapa.");
+            isAdmin = true; document.getElementById('btnNew').style.display = 'block'; alert("Modo Admin Activo");
         }
     }
 
@@ -159,7 +149,7 @@
         document.getElementById('modal').style.display = 'block';
         setTimeout(() => {
             if(!mapAdmin) {
-                mapAdmin = L.map('mapAdmin').setView([10.96, -74.79], 11);
+                mapAdmin = L.map('mapAdmin').setView([10.96, -74.79], 10);
                 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(mapAdmin);
                 markerAdmin = L.marker([10.96, -74.79], {draggable:true}).addTo(mapAdmin);
                 mapAdmin.on('click', ev => {
@@ -167,7 +157,7 @@
                     document.getElementById('rLat').value = ev.latlng.lat.toFixed(6);
                     document.getElementById('rLng').value = ev.latlng.lng.toFixed(6);
                 });
-            } else { mapAdmin.invalidateSize(); }
+            }
         }, 300);
     }
 
@@ -187,14 +177,21 @@
     function cerrarModal() { document.getElementById('modal').style.display = 'none'; }
 
     function exportarExcel() {
-        if(window.dbTecnicos.length === 0) return alert("No hay datos");
-        const datos = window.dbTecnicos.map(t => ({
-            Nombre: t.nombre, Ciudad: t.ubi, Especialidad: t.esp, Telefono: t.tel
-        }));
-        const ws = XLSX.utils.json_to_sheet(datos);
-        const wb = XLSX.utils.book_new();
-        XLSX.book_append_sheet(wb, ws, "Tecnicos");
-        XLSX.writeFile(wb, "SNT_Datatrack_Nacional.xlsx");
+        try {
+            if(!window.dbTecnicos || window.dbTecnicos.length === 0) return alert("No hay datos para exportar");
+            const prep = window.dbTecnicos.map(t => ({
+                "Nombre del Técnico": t.nombre,
+                "Ciudad": t.ubi,
+                "Especialidad": t.esp,
+                "Teléfono": t.tel,
+                "Latitud": t.lat,
+                "Longitud": t.lng
+            }));
+            const ws = XLSX.utils.json_to_sheet(prep);
+            const wb = XLSX.utils.book_new();
+            XLSX.book_append_sheet(wb, ws, "Técnicos_Datatrack");
+            XLSX.writeFile(wb, "SNT_Datatrack_Nacional.xlsx");
+        } catch(e) { alert("Error al generar Excel: " + e.message); }
     }
 </script>
 </body>
