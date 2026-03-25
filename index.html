@@ -52,10 +52,10 @@
         <div id="mapAdmin" style="height: 180px; border-radius: 8px; margin-bottom: 15px; background:#eee;"></div>
         <div class="form-grid">
             <input type="hidden" id="eIdx">
-            <input type="text" id="rNom" style="grid-column: span 2;" placeholder="Nombre del Técnico">
-            <input type="text" id="rUbi" placeholder="Ciudad / Zona">
+            <input type="text" id="rNom" style="grid-column: span 2;" placeholder="Nombre">
+            <input type="text" id="rUbi" placeholder="Ciudad">
             <input type="text" id="rEsp" placeholder="Especialidad">
-            <input type="text" id="rTel" style="grid-column: span 2;" placeholder="Teléfono de Contacto">
+            <input type="text" id="rTel" style="grid-column: span 2;" placeholder="Teléfono">
             <input type="text" id="rLat" placeholder="Latitud" readonly>
             <input type="text" id="rLng" placeholder="Longitud" readonly>
         </div>
@@ -68,7 +68,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // Configuración Vidal Zambrano - Datatrack
     const firebaseConfig = {
       apiKey: "AIzaSyAjh_N7X4nBi6GPnWjxegPX2SKZf7PxW-w",
       authDomain: "agenda-datatrack.firebaseapp.com",
@@ -82,7 +81,6 @@
     const db = getFirestore(app);
     const tecCol = collection(db, "tecnicos_nacional");
 
-    // Sincronización en tiempo real
     onSnapshot(tecCol, (snap) => {
         window.dbTecnicos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         window.renderCards();
@@ -96,7 +94,6 @@
 <script>
     let isAdmin = false; window.dbTecnicos = [];
     const map = L.map('mapAgenda').setView([10.96, -74.79], 6);
-    // Servidor Esri para evitar errores de acceso 403
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
     let mapAdmin, markerAdmin;
@@ -105,7 +102,7 @@
         if(document.getElementById('pass').value === "admin123") {
             isAdmin = true;
             document.getElementById('btnNew').style.display = 'block';
-            alert("Acceso administrador activo para Datatrack");
+            alert("Acceso administrador activo");
         } else { alert("Clave incorrecta"); }
         renderCards();
     }
@@ -118,19 +115,12 @@
 
         dbTecnicos.forEach((t, i) => {
             if(!t.nombre.toLowerCase().includes(search) && !t.ubi.toLowerCase().includes(search)) return;
-            const active = (i === cercanoId);
             const card = document.createElement('div');
-            card.className = `tech-card ${active ? 'active' : ''}`;
-            card.innerHTML = `
-                <h4>${t.nombre}</h4>
-                <p>📍 ${t.ubi}</p>
-                <div class="admin-btns" style="display:${isAdmin ? 'flex' : 'none'}">
-                    <button class="btn-sm" style="background:#ffc107; color:black" onclick="abrirModal(${i})">✏️</button>
-                    <button class="btn-sm" style="background:#dc3545" onclick="eliminar(${i})">🗑️</button>
-                </div>`;
+            card.className = `tech-card ${i === cercanoId ? 'active' : ''}`;
+            card.innerHTML = `<h4>${t.nombre}</h4><p>📍 ${t.ubi}</p><div class="admin-btns" style="display:${isAdmin ? 'flex' : 'none'}"><button class="btn-sm" style="background:#ffc107; color:black" onclick="abrirModal(${i})">✏️</button><button class="btn-sm" style="background:#dc3545" onclick="eliminar(${i})">🗑️</button></div>`;
             card.onclick = (e) => { if(e.target.tagName !== 'BUTTON') map.flyTo([t.lat, t.lng], 13); };
             listEl.appendChild(card);
-            L.marker([t.lat, t.lng]).addTo(map).bindPopup(`<b>${t.nombre}</b><br>${t.ubi}`);
+            L.marker([t.lat, t.lng]).addTo(map).bindPopup(t.nombre);
         });
     }
 
@@ -139,12 +129,9 @@
         document.getElementById('eIdx').value = idx;
         if(idx !== -1) {
             const t = dbTecnicos[idx];
-            document.getElementById('rNom').value = t.nombre;
-            document.getElementById('rUbi').value = t.ubi;
-            document.getElementById('rEsp').value = t.esp;
-            document.getElementById('rTel').value = t.tel;
-            document.getElementById('rLat').value = t.lat;
-            document.getElementById('rLng').value = t.lng;
+            document.getElementById('rNom').value = t.nombre; document.getElementById('rUbi').value = t.ubi;
+            document.getElementById('rEsp').value = t.esp; document.getElementById('rTel').value = t.tel;
+            document.getElementById('rLat').value = t.lat; document.getElementById('rLng').value = t.lng;
         }
         setTimeout(() => {
             if(!mapAdmin) {
@@ -163,31 +150,35 @@
     async function guardar() {
         const idx = document.getElementById('eIdx').value;
         const data = {
-            nombre: document.getElementById('rNom').value,
-            ubi: document.getElementById('rUbi').value,
-            esp: document.getElementById('rEsp').value,
-            tel: document.getElementById('rTel').value,
-            lat: parseFloat(document.getElementById('rLat').value),
-            lng: parseFloat(document.getElementById('rLng').value)
+            nombre: document.getElementById('rNom').value, ubi: document.getElementById('rUbi').value,
+            esp: document.getElementById('rEsp').value, tel: document.getElementById('rTel').value,
+            lat: parseFloat(document.getElementById('rLat').value), lng: parseFloat(document.getElementById('rLng').value)
         };
         try {
             if(idx === "-1") await window.fbAdd(data);
             else await window.fbUpdate(dbTecnicos[idx].id, data);
-            cerrarModal(); // CIERRE AUTOMÁTICO
-        } catch (e) { alert("Error al guardar. Revisa las reglas de Firestore."); }
+            cerrarModal();
+        } catch (e) { alert("Error al guardar."); }
     }
 
-    async function eliminar(i) {
-        if(confirm("¿Eliminar registro nacional?")) await window.fbDelete(dbTecnicos[i].id);
-    }
+    async function eliminar(i) { if(confirm("¿Eliminar?")) await window.fbDelete(dbTecnicos[i].id); }
+    function cerrarModal() { document.getElementById('modal').style.display = 'none'; document.querySelectorAll('input:not(#pass)').forEach(i => i.value = ""); }
 
-    function cerrarModal() {
-        document.getElementById('modal').style.display = 'none';
-        document.querySelectorAll('input:not(#pass)').forEach(i => i.value = "");
-    }
-
+    // FUNCIÓN DE EXCEL CORREGIDA
     function exportarExcel() {
-        const ws = XLSX.utils.json_to_sheet(dbTecnicos);
+        if(dbTecnicos.length === 0) return alert("No hay datos para exportar");
+        
+        // Limpiamos los datos para que el Excel se vea profesional
+        const datosLimpios = dbTecnicos.map(t => ({
+            Nombre: t.nombre,
+            Ubicación: t.ubi,
+            Especialidad: t.esp,
+            Teléfono: t.tel,
+            Latitud: t.lat,
+            Longitud: t.lng
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(datosLimpios);
         const wb = XLSX.utils.book_new();
         XLSX.book_append_sheet(wb, ws, "Tecnicos_Datatrack");
         XLSX.writeFile(wb, "Agenda_Nacional_SNT.xlsx");
