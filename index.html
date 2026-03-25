@@ -8,23 +8,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
-        :root { --primary: #002b5c; --accent: #00d2ff; --success: #28a745; --danger: #dc3545; --bg: #f8f9fa; }
+        :root { --primary: #002b5c; --accent: #00d2ff; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         .header { background: var(--primary); color: white; padding: 12px 25px; display: flex; justify-content: space-between; align-items: center; z-index: 1100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .auth-zone { display: flex; gap: 8px; align-items: center; }
         .main-content { display: flex; flex: 1; position: relative; }
         #mapAgenda { flex: 1; z-index: 1; }
-        .floating-panel { position: absolute; top: 20px; right: 20px; width: 360px; max-height: 85%; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-radius: 15px; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; padding: 15px; }
+        .floating-panel { position: absolute; top: 20px; right: 20px; width: 340px; max-height: 85%; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-radius: 15px; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; padding: 15px; }
         .tech-list { overflow-y: auto; flex: 1; margin-top: 10px; }
-        .tech-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 12px; border: 1px solid #eee; transition: 0.3s; cursor: pointer; position: relative; }
+        .tech-card { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border: 1px solid #eee; cursor: pointer; transition: 0.3s; }
         .tech-card.active { border: 2px solid var(--success); background: #f0fff4; }
-        .tech-card h4 { margin: 0; color: var(--primary); font-size: 16px; }
-        .tech-card p { margin: 3px 0; font-size: 13px; color: #555; }
-        .admin-btns { display: none; margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee; justify-content: flex-end; gap: 5px; }
+        .admin-btns { display: none; margin-top: 8px; justify-content: flex-end; gap: 5px; border-top: 1px solid #eee; padding-top: 5px; }
         .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 4px; cursor: pointer; border: none; font-weight: bold; color: white; }
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); }
-        .modal-content { background: white; margin: 4% auto; padding: 25px; width: 420px; border-radius: 15px; }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .modal-content { background: white; margin: 5% auto; padding: 20px; width: 400px; border-radius: 15px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; }
     </style>
 </head>
@@ -33,9 +31,9 @@
 <div class="header">
     <div><b>DATATRACK</b> | Agenda Nacional de Técnicos</div>
     <div class="auth-zone">
-        <button id="btnNew" class="btn-sm" style="background:var(--accent); display:none;" onclick="abrirModal()">➕ Nuevo Registro</button>
+        <button id="btnNew" class="btn-sm" style="background:var(--accent); display:none;" onclick="abrirModal()">➕ Nuevo Técnico</button>
         <button class="btn-sm" style="background:#217346" onclick="exportarExcel()">📊 Exportar Excel</button>
-        <input type="password" id="pass" placeholder="Clave Admin" style="width: 80px; padding: 4px;">
+        <input type="password" id="pass" placeholder="Clave" style="width: 70px; padding: 4px;">
         <button class="btn-sm" style="background:#6c757d" onclick="login()">Entrar</button>
     </div>
 </div>
@@ -44,26 +42,25 @@
     <div id="mapAgenda"></div>
     <div class="floating-panel">
         <input type="text" id="busc" style="padding:10px; border-radius:8px; border:1px solid #ddd" placeholder="🔍 Buscar ciudad o técnico..." onkeyup="renderCards()">
-        <div id="res-cercano" style="font-size: 11px; color: var(--primary); margin: 8px 0; font-weight: bold;"></div>
         <div class="tech-list" id="lista"></div>
     </div>
 </div>
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3 id="mTitle" style="margin-top:0">Registrar Técnico</h3>
-        <div id="mapAdmin" style="height: 180px; border-radius: 8px; margin-bottom: 10px;"></div>
+        <h3 style="margin:0 0 10px 0">Datos del Técnico</h3>
+        <div id="mapAdmin" style="height: 180px; border-radius: 8px; margin-bottom: 15px; background:#eee;"></div>
         <div class="form-grid">
             <input type="hidden" id="eIdx">
             <input type="text" id="rNom" style="grid-column: span 2;" placeholder="Nombre del Técnico">
-            <input type="text" id="rUbi" placeholder="Ciudad/Vereda/Depto">
+            <input type="text" id="rUbi" placeholder="Ciudad / Zona">
             <input type="text" id="rEsp" placeholder="Especialidad">
             <input type="text" id="rTel" style="grid-column: span 2;" placeholder="Teléfono de Contacto">
             <input type="text" id="rLat" placeholder="Latitud" readonly>
             <input type="text" id="rLng" placeholder="Longitud" readonly>
         </div>
-        <button class="btn-sm" style="background:var(--success); width:100%; margin-top:15px; padding:12px;" onclick="guardar()">💾 Guardar en Firebase</button>
-        <button class="btn-sm" style="background:#666; width:100%; margin-top:5px;" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-sm" style="background:var(--success); width:100%; margin-top:15px; padding:12px;" onclick="guardar()">💾 GUARDAR Y CERRAR</button>
+        <button class="btn-sm" style="background:#666; width:100%; margin-top:5px;" onclick="cerrarModal()">CANCELAR</button>
     </div>
 </div>
 
@@ -85,6 +82,7 @@
     const db = getFirestore(app);
     const tecCol = collection(db, "tecnicos_nacional");
 
+    // Sincronización en tiempo real
     onSnapshot(tecCol, (snap) => {
         window.dbTecnicos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         window.renderCards();
@@ -96,9 +94,9 @@
 </script>
 
 <script>
-    let isAdmin = false;
-    window.dbTecnicos = [];
+    let isAdmin = false; window.dbTecnicos = [];
     const map = L.map('mapAgenda').setView([10.96, -74.79], 6);
+    // Servidor Esri para evitar errores de acceso 403
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
     let mapAdmin, markerAdmin;
@@ -107,7 +105,7 @@
         if(document.getElementById('pass').value === "admin123") {
             isAdmin = true;
             document.getElementById('btnNew').style.display = 'block';
-            alert("Modo Administrador Activo");
+            alert("Acceso administrador activo para Datatrack");
         } else { alert("Clave incorrecta"); }
         renderCards();
     }
@@ -126,19 +124,13 @@
             card.innerHTML = `
                 <h4>${t.nombre}</h4>
                 <p>📍 ${t.ubi}</p>
-                <p>🛠️ ${t.esp}</p>
                 <div class="admin-btns" style="display:${isAdmin ? 'flex' : 'none'}">
                     <button class="btn-sm" style="background:#ffc107; color:black" onclick="abrirModal(${i})">✏️</button>
                     <button class="btn-sm" style="background:#dc3545" onclick="eliminar(${i})">🗑️</button>
                 </div>`;
             card.onclick = (e) => { if(e.target.tagName !== 'BUTTON') map.flyTo([t.lat, t.lng], 13); };
             listEl.appendChild(card);
-            L.marker([t.lat, t.lng], {
-                icon: L.icon({
-                    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${active ? 'green' : 'blue'}.png`,
-                    iconSize: [25, 41], iconAnchor: [12, 41]
-                })
-            }).addTo(map).bindPopup(t.nombre);
+            L.marker([t.lat, t.lng]).addTo(map).bindPopup(`<b>${t.nombre}</b><br>${t.ubi}`);
         });
     }
 
@@ -154,16 +146,18 @@
             document.getElementById('rLat').value = t.lat;
             document.getElementById('rLng').value = t.lng;
         }
-        if(!mapAdmin) {
-            mapAdmin = L.map('mapAdmin').setView([10.96, -74.79], 11);
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(mapAdmin);
-            markerAdmin = L.marker([10.96, -74.79], {draggable:true}).addTo(mapAdmin);
-            mapAdmin.on('click', e => {
-                markerAdmin.setLatLng(e.latlng);
-                document.getElementById('rLat').value = e.latlng.lat.toFixed(6);
-                document.getElementById('rLng').value = e.latlng.lng.toFixed(6);
-            });
-        }
+        setTimeout(() => {
+            if(!mapAdmin) {
+                mapAdmin = L.map('mapAdmin').setView([10.96, -74.79], 11);
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(mapAdmin);
+                markerAdmin = L.marker([10.96, -74.79], {draggable:true}).addTo(mapAdmin);
+                mapAdmin.on('click', e => {
+                    markerAdmin.setLatLng(e.latlng);
+                    document.getElementById('rLat').value = e.latlng.lat.toFixed(6);
+                    document.getElementById('rLng').value = e.latlng.lng.toFixed(6);
+                });
+            } else { mapAdmin.invalidateSize(); }
+        }, 300);
     }
 
     async function guardar() {
@@ -176,13 +170,15 @@
             lat: parseFloat(document.getElementById('rLat').value),
             lng: parseFloat(document.getElementById('rLng').value)
         };
-        if(idx === "-1") await window.fbAdd(data);
-        else await window.fbUpdate(dbTecnicos[idx].id, data);
-        cerrarModal();
+        try {
+            if(idx === "-1") await window.fbAdd(data);
+            else await window.fbUpdate(dbTecnicos[idx].id, data);
+            cerrarModal(); // CIERRE AUTOMÁTICO
+        } catch (e) { alert("Error al guardar. Revisa las reglas de Firestore."); }
     }
 
     async function eliminar(i) {
-        if(confirm("¿Eliminar registro?")) await window.fbDelete(dbTecnicos[i].id);
+        if(confirm("¿Eliminar registro nacional?")) await window.fbDelete(dbTecnicos[i].id);
     }
 
     function cerrarModal() {
@@ -190,20 +186,11 @@
         document.querySelectorAll('input:not(#pass)').forEach(i => i.value = "");
     }
 
-    map.on('click', e => {
-        let min = Infinity, idx = -1;
-        dbTecnicos.forEach((t, i) => {
-            let d = Math.sqrt(Math.pow(e.latlng.lat - t.lat, 2) + Math.pow(e.latlng.lng - t.lng, 2));
-            if(d < min) { min = d; idx = i; }
-        });
-        if(idx !== -1) renderCards(idx);
-    });
-
     function exportarExcel() {
         const ws = XLSX.utils.json_to_sheet(dbTecnicos);
         const wb = XLSX.utils.book_new();
-        XLSX.book_append_sheet(wb, ws, "Tecnicos");
-        XLSX.writeFile(wb, "Agenda_Nacional_Datatrack.xlsx");
+        XLSX.book_append_sheet(wb, ws, "Tecnicos_Datatrack");
+        XLSX.writeFile(wb, "Agenda_Nacional_SNT.xlsx");
     }
 </script>
 </body>
