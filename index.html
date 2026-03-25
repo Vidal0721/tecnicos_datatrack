@@ -5,7 +5,7 @@
     <title>SNT Datatrack | Gestión Nacional</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
     <style>
         :root { --primary: #002b5c; --accent: #00d2ff; --success: #25d366; --bg: #f8f9fa; }
@@ -16,16 +16,28 @@
         
         #mapAgenda { flex: 1; z-index: 1; }
 
+        /* Tarjeta de Cercanía */
         .floating-card { 
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 300px; background: white; border-radius: 15px; padding: 20px;
+            position: absolute; bottom: 30px; left: 30px; width: 280px; 
+            background: white; border-radius: 15px; padding: 15px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000;
-            display: none; border-top: 5px solid var(--accent);
+            display: none; border-left: 5px solid var(--accent);
         }
         
-        .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+        /* Panel de Resultados de Búsqueda */
+        .results-panel {
+            position: absolute; top: 120px; right: 20px; width: 350px; max-height: 70vh;
+            background: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000; display: none; overflow-y: auto; padding: 15px;
+        }
+
+        .tech-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tech-table th { text-align: left; background: #eee; padding: 8px; }
+        .tech-table td { padding: 8px; border-bottom: 1px solid #ddd; }
+
+        .btn { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; }
         .btn-excel { background: #217346; color: white; }
-        .btn-ws { background: var(--success); color: white; text-decoration: none; display: inline-block; margin-top: 10px; text-align: center; width: 100%; box-sizing: border-box; }
+        .btn-ws { background: var(--success); color: white; text-decoration: none; display: block; text-align: center; margin-top: 10px; padding: 10px; border-radius: 6px; }
 
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
         .modal-content { background: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 400px; border-radius: 12px; }
@@ -36,42 +48,52 @@
 
 <div class="header">
     <div><b>DATATRACK</b> | SNT Nacional</div>
-    <div style="display:flex; gap:10px;">
-        <button class="btn btn-excel" onclick="exportarExcel()">📊 Descargar Excel</button>
+    <div style="display:flex; gap:10px; align-items:center;">
+        <button class="btn btn-excel" onclick="exportarExcel()">📊 Exportar a Excel</button>
         <button id="btnNew" class="btn" style="background:var(--accent); display:none;" onclick="abrirModal()">➕ Nuevo</button>
-        <input type="password" id="pass" placeholder="Clave Admin" style="width: 80px; margin:0; height: 30px;">
+        <input type="password" id="pass" placeholder="Admin" style="width: 60px; height: 25px; margin:0;">
         <button class="btn" style="background:#6c757d; color:white;" onclick="login()">OK</button>
     </div>
 </div>
 
 <div class="search-bar">
-    <input type="text" id="busc" placeholder="🔍 Filtrar por ciudad o nombre del técnico..." onkeyup="filtrarMapa()">
+    <input type="text" id="busc" placeholder="🔍 Buscar por nombre o ciudad..." onkeyup="filtrarTecnicos()">
 </div>
 
 <div id="mapAgenda"></div>
 
+<div id="resultsPanel" class="results-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h4 style="margin:0;">Resultados</h4>
+        <span style="cursor:pointer; font-weight:bold;" onclick="cerrarResultados()">✕</span>
+    </div>
+    <table class="tech-table">
+        <thead><tr><th>Nombre</th><th>Ciudad</th><th>Acción</th></tr></thead>
+        <tbody id="resBody"></tbody>
+    </table>
+</div>
+
 <div id="nearCard" class="floating-card">
     <span style="float:right; cursor:pointer;" onclick="this.parentElement.style.display='none'">✖</span>
-    <small style="color:var(--primary); font-weight:bold;">TÉCNICO MÁS CERCANO</small>
+    <small style="color:var(--primary); font-weight:bold;">MÁS CERCANO A TU CLIC</small>
     <h3 id="nName" style="margin:5px 0">-</h3>
     <p id="nUbi" style="margin:2px 0; font-size:14px;">📍 -</p>
-    <p id="nEsp" style="margin:2px 0; font-size:14px;">🔧 -</p>
-    <p id="nDist" style="color:blue; font-weight:bold; margin-top:5px; font-size:13px;"></p>
+    <p id="nDist" style="color:blue; font-weight:bold; margin-top:5px; font-size:12px;"></p>
     <a id="nWS" href="#" target="_blank" class="btn-ws">💬 WhatsApp</a>
 </div>
 
 <div id="modal" class="modal">
     <div class="modal-content">
         <h3>Registrar Técnico</h3>
-        <div id="mapAdmin" style="height: 150px; background:#eee; margin-bottom:10px; border-radius:8px;"></div>
         <input type="text" id="rNom" placeholder="Nombre completo">
         <input type="text" id="rUbi" placeholder="Ciudad">
         <input type="text" id="rEsp" placeholder="Especialidad">
-        <input type="text" id="rTel" placeholder="Teléfono (ej: 57310...)">
+        <input type="text" id="rTel" placeholder="WhatsApp (ej: 57300...)">
+        <div id="mapAdmin" style="height: 150px; background:#eee; margin-bottom:10px; border-radius:8px;"></div>
         <input type="text" id="rLat" placeholder="Latitud" readonly>
         <input type="text" id="rLng" placeholder="Longitud" readonly>
-        <button class="btn" style="background:var(--primary); color:white; width:100%;" onclick="guardar()">💾 GUARDAR</button>
-        <button class="btn" style="background:#666; color:white; width:100%; margin-top:5px;" onclick="cerrarModal()">CERRAR</button>
+        <button class="btn" style="background:var(--primary); color:white; width:100%; padding:12px;" onclick="guardar()">💾 GUARDAR</button>
+        <button class="btn" style="background:#666; color:white; width:100%; margin-top:5px;" onclick="cerrarModal()">CANCELAR</button>
     </div>
 </div>
 
@@ -94,7 +116,7 @@
 
     onSnapshot(tecCol, (snap) => {
         window.dbTecnicos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        window.actualizarMarcadores(window.dbTecnicos);
+        window.actualizarMapa(window.dbTecnicos);
     });
 
     window.fbAdd = (data) => addDoc(tecCol, data);
@@ -105,17 +127,31 @@
     const map = L.map('mapAgenda').setView([10.96, -74.79], 6);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
-    let mapAdmin, markerAdmin;
+    function filtrarTecnicos() {
+        const query = document.getElementById('busc').value.toLowerCase();
+        const panel = document.getElementById('resultsPanel');
+        const body = document.getElementById('resBody');
+        
+        if(query.length < 2) { panel.style.display = 'none'; return; }
 
-    function filtrarMapa() {
-        const val = document.getElementById('busc').value.toLowerCase();
         const filtrados = window.dbTecnicos.filter(t => 
-            t.nombre.toLowerCase().includes(val) || t.ubi.toLowerCase().includes(val)
+            t.nombre.toLowerCase().includes(query) || t.ubi.toLowerCase().includes(query)
         );
-        actualizarMarcadores(filtrados);
+
+        body.innerHTML = "";
+        filtrados.forEach(t => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${t.nombre}</td><td>${t.ubi}</td>
+                            <td><button class="btn" style="background:var(--accent)" onclick="enfocar(${t.lat}, ${t.lng})">📍</button></td>`;
+            body.appendChild(tr);
+        });
+        panel.style.display = 'block';
     }
 
-    function actualizarMarcadores(lista) {
+    function enfocar(lat, lng) { map.flyTo([lat, lng], 14); }
+    function cerrarResultados() { document.getElementById('resultsPanel').style.display = 'none'; }
+
+    function actualizarMapa(lista) {
         map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
         lista.forEach(t => {
             L.marker([t.lat, t.lng]).addTo(map).bindPopup(`<b>${t.nombre}</b><br>${t.ubi}`);
@@ -123,28 +159,29 @@
     }
 
     map.on('click', function(e) {
-        if(window.dbTecnicos.length === 0) return;
+        if(!window.dbTecnicos || window.dbTecnicos.length === 0) return;
         let cercano = null; let minDist = Infinity;
         window.dbTecnicos.forEach(t => {
             let d = map.distance(e.latlng, [t.lat, t.lng]);
             if(d < minDist) { minDist = d; cercano = t; }
         });
         if(cercano) {
-            document.getElementById('nearCard').style.display = 'block';
+            const card = document.getElementById('nearCard');
+            card.style.display = 'block';
             document.getElementById('nName').innerText = cercano.nombre;
             document.getElementById('nUbi').innerText = "📍 " + cercano.ubi;
-            document.getElementById('nEsp').innerText = "🔧 " + cercano.esp;
-            document.getElementById('nDist').innerText = "A " + (minDist/1000).toFixed(2) + " km de distancia";
-            document.getElementById('nWS').href = `https://wa.me/${cercano.tel}?text=Hola%20${cercano.nombre},%20tenemos%20un%20servicio%20cerca%20de%20tu%20ubicación.`;
+            document.getElementById('nDist').innerText = "Distancia: " + (minDist/1000).toFixed(1) + " km";
+            document.getElementById('nWS').href = `https://wa.me/${cercano.tel}`;
         }
     });
 
     function login() {
         if(document.getElementById('pass').value === "admin123") {
-            isAdmin = true; document.getElementById('btnNew').style.display = 'block'; alert("Modo Admin Activo");
+            isAdmin = true; document.getElementById('btnNew').style.display = 'block'; alert("Acceso Datatrack");
         }
     }
 
+    let mapAdmin, markerAdmin;
     function abrirModal() {
         document.getElementById('modal').style.display = 'block';
         setTimeout(() => {
@@ -163,12 +200,9 @@
 
     async function guardar() {
         const data = {
-            nombre: document.getElementById('rNom').value,
-            ubi: document.getElementById('rUbi').value,
-            esp: document.getElementById('rEsp').value,
-            tel: document.getElementById('rTel').value,
-            lat: parseFloat(document.getElementById('rLat').value),
-            lng: parseFloat(document.getElementById('rLng').value)
+            nombre: document.getElementById('rNom').value, ubi: document.getElementById('rUbi').value,
+            esp: document.getElementById('rEsp').value, tel: document.getElementById('rTel').value,
+            lat: parseFloat(document.getElementById('rLat').value), lng: parseFloat(document.getElementById('rLng').value)
         };
         await window.fbAdd(data);
         cerrarModal();
@@ -178,20 +212,15 @@
 
     function exportarExcel() {
         try {
-            if(!window.dbTecnicos || window.dbTecnicos.length === 0) return alert("No hay datos para exportar");
-            const prep = window.dbTecnicos.map(t => ({
-                "Nombre del Técnico": t.nombre,
-                "Ciudad": t.ubi,
-                "Especialidad": t.esp,
-                "Teléfono": t.tel,
-                "Latitud": t.lat,
-                "Longitud": t.lng
+            if(!window.dbTecnicos || window.dbTecnicos.length === 0) return alert("No hay datos");
+            const dataToExport = window.dbTecnicos.map(t => ({
+                Nombre: t.nombre, Ciudad: t.ubi, Especialidad: t.esp, Telefono: t.tel
             }));
-            const ws = XLSX.utils.json_to_sheet(prep);
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
             const wb = XLSX.utils.book_new();
-            XLSX.book_append_sheet(wb, ws, "Técnicos_Datatrack");
-            XLSX.writeFile(wb, "SNT_Datatrack_Nacional.xlsx");
-        } catch(e) { alert("Error al generar Excel: " + e.message); }
+            XLSX.utils.book_append_sheet(wb, ws, "Tecnicos");
+            XLSX.writeFile(wb, "SNT_Datatrack.xlsx");
+        } catch(e) { alert("Error: " + e.message); }
     }
 </script>
 </body>
