@@ -2,161 +2,162 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>SNT Pro - Gestión Nacional Datatrack</title>
+    <title>SNT Datatrack | Gestión Nacional</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <style>
-        :root { --primary: #002b5c; --accent: #00d2ff; --danger: #dc3545; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        
-        /* Header & Auth */
-        .header { background: var(--primary); color: white; padding: 12px 25px; display: flex; justify-content: space-between; align-items: center; z-index: 1100; }
-        .auth-zone { display: flex; gap: 10px; align-items: center; }
-        
-        .main-content { display: flex; flex: 1; position: relative; overflow: hidden; }
+        :root { --primary: #002b5c; --accent: #00d2ff; --success: #28a745; --danger: #dc3545; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .header { background: var(--primary); color: white; padding: 12px 25px; display: flex; justify-content: space-between; align-items: center; z-index: 1100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .auth-zone { display: flex; gap: 8px; align-items: center; }
+        .main-content { display: flex; flex: 1; position: relative; }
         #mapAgenda { flex: 1; z-index: 1; }
-
-        /* Panel Lateral */
-        .floating-panel { position: absolute; top: 20px; right: 20px; width: 360px; max-height: 85%; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 15px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; padding: 15px; }
-        .tech-list { overflow-y: auto; flex: 1; padding-right: 5px; }
-        
-        /* Cards */
-        .tech-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 12px; border: 1px solid #eee; transition: 0.3s; position: relative; }
-        .tech-card.active { border: 2px solid #28a745; background: #f0fff4; }
+        .floating-panel { position: absolute; top: 20px; right: 20px; width: 360px; max-height: 85%; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-radius: 15px; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; padding: 15px; }
+        .tech-list { overflow-y: auto; flex: 1; margin-top: 10px; }
+        .tech-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 12px; border: 1px solid #eee; transition: 0.3s; cursor: pointer; position: relative; }
+        .tech-card.active { border: 2px solid var(--success); background: #f0fff4; }
         .tech-card h4 { margin: 0; color: var(--primary); font-size: 16px; }
-        .tech-card p { margin: 3px 0; font-size: 13px; color: #666; }
-        
-        /* Controles de Admin (Ocultos por defecto) */
-        .admin-controls { display: none; margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px; gap: 5px; justify-content: flex-end; }
-        .btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 4px; cursor: pointer; border: none; font-weight: bold; color: white; }
-        .btn-edit { background: #ffc107; color: #000; }
-        .btn-del { background: var(--danger); }
-
-        /* Modales */
+        .tech-card p { margin: 3px 0; font-size: 13px; color: #555; }
+        .admin-btns { display: none; margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee; justify-content: flex-end; gap: 5px; }
+        .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 4px; cursor: pointer; border: none; font-weight: bold; color: white; }
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); }
-        .modal-content { background: white; margin: 3% auto; padding: 25px; width: 450px; border-radius: 15px; position: relative; }
+        .modal-content { background: white; margin: 4% auto; padding: 25px; width: 420px; border-radius: 15px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
-        .full { grid-column: span 2; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div style="font-size: 1.2em; font-weight: bold;">DATATRACK | RED TÉCNICA</div>
+    <div><b>DATATRACK</b> | Agenda Nacional de Técnicos</div>
     <div class="auth-zone">
-        <button id="btnNewTech" class="btn-sm" style="background:var(--accent); display:none;" onclick="abrirModal()">➕ Nuevo Técnico</button>
-        <button id="btnExcel" class="btn-sm" style="background:#217346" onclick="exportarExcel()">📊 Excel</button>
-        <input type="password" id="adminPass" placeholder="Clave Admin" style="width: 100px; padding: 5px;">
-        <button class="btn-sm" style="background:#6c757d" onclick="verificarAcceso()">Entrar</button>
+        <button id="btnNew" class="btn-sm" style="background:var(--accent); display:none;" onclick="abrirModal()">➕ Nuevo Registro</button>
+        <button class="btn-sm" style="background:#217346" onclick="exportarExcel()">📊 Exportar Excel</button>
+        <input type="password" id="pass" placeholder="Clave Admin" style="width: 80px; padding: 4px;">
+        <button class="btn-sm" style="background:#6c757d" onclick="login()">Entrar</button>
     </div>
 </div>
 
 <div class="main-content">
     <div id="mapAgenda"></div>
     <div class="floating-panel">
-        <input type="text" id="buscador" style="padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd" placeholder="🔍 Filtrar ciudad o nombre..." onkeyup="renderCards()">
-        <div id="status" style="font-size: 11px; color: var(--primary); margin-bottom: 10px; font-weight: bold;"></div>
-        <div class="tech-list" id="lista-tecnicos"></div>
+        <input type="text" id="busc" style="padding:10px; border-radius:8px; border:1px solid #ddd" placeholder="🔍 Buscar ciudad o técnico..." onkeyup="renderCards()">
+        <div id="res-cercano" style="font-size: 11px; color: var(--primary); margin: 8px 0; font-weight: bold;"></div>
+        <div class="tech-list" id="lista"></div>
     </div>
 </div>
 
-<div id="modalReg" class="modal">
+<div id="modal" class="modal">
     <div class="modal-content">
-        <h3 id="modalTitle">Registrar Técnico</h3>
+        <h3 id="mTitle" style="margin-top:0">Registrar Técnico</h3>
         <div id="mapAdmin" style="height: 180px; border-radius: 8px; margin-bottom: 10px;"></div>
         <div class="form-grid">
-            <input type="hidden" id="editIndex">
-            <input type="text" id="rNombre" class="full" placeholder="Nombre completo">
-            <input type="text" id="rUbi" placeholder="Ciudad/Vereda">
+            <input type="hidden" id="eIdx">
+            <input type="text" id="rNom" style="grid-column: span 2;" placeholder="Nombre del Técnico">
+            <input type="text" id="rUbi" placeholder="Ciudad/Vereda/Depto">
             <input type="text" id="rEsp" placeholder="Especialidad">
-            <input type="text" id="rTel" class="full" placeholder="Teléfono de contacto">
+            <input type="text" id="rTel" style="grid-column: span 2;" placeholder="Teléfono de Contacto">
             <input type="text" id="rLat" placeholder="Latitud" readonly>
             <input type="text" id="rLng" placeholder="Longitud" readonly>
         </div>
-        <button class="btn-sm" style="background:var(--primary); width:100%; margin-top:15px; padding:12px;" onclick="guardarTecnico()">Confirmar Datos</button>
-        <button class="btn-sm" style="background:#666; width:100%; margin-top:5px; padding:10px;" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-sm" style="background:var(--success); width:100%; margin-top:15px; padding:12px;" onclick="guardar()">💾 Guardar en Firebase</button>
+        <button class="btn-sm" style="background:#666; width:100%; margin-top:5px;" onclick="cerrarModal()">Cancelar</button>
     </div>
 </div>
 
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // Configuración Vidal Zambrano - Datatrack
+    const firebaseConfig = {
+      apiKey: "AIzaSyAjh_N7X4nBi6GPnWjxegPX2SKZf7PxW-w",
+      authDomain: "agenda-datatrack.firebaseapp.com",
+      projectId: "agenda-datatrack",
+      storageBucket: "agenda-datatrack.firebasestorage.app",
+      messagingSenderId: "818633255134",
+      appId: "1:818633255134:web:f0d7dfe7f5caf8c4607a4f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const tecCol = collection(db, "tecnicos_nacional");
+
+    onSnapshot(tecCol, (snap) => {
+        window.dbTecnicos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        window.renderCards();
+    });
+
+    window.fbAdd = (data) => addDoc(tecCol, data);
+    window.fbUpdate = (id, data) => updateDoc(doc(db, "tecnicos_nacional", id), data);
+    window.fbDelete = (id) => deleteDoc(doc(db, "tecnicos_nacional", id));
+</script>
+
 <script>
     let isAdmin = false;
-    let dbTecnicos = [
-        { nombre: "Sede Barranquilla", ubi: "Barranquilla, Atl.", esp: "Soporte Central", tel: "300123", lat: 10.96, lng: -74.79 },
-        { nombre: "Juan Técnico", ubi: "Medellín, Ant.", esp: "Mecánica IoT", tel: "311444", lat: 6.24, lng: -75.58 }
-    ];
-
-    const map = L.map('mapAgenda').setView([4.57, -74.29], 5);
+    window.dbTecnicos = [];
+    const map = L.map('mapAgenda').setView([10.96, -74.79], 6);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
     let mapAdmin, markerAdmin;
 
-    function verificarAcceso() {
-        const pass = document.getElementById('adminPass').value;
-        if(pass === "admin123") { // CAMBIA TU CLAVE AQUÍ
+    function login() {
+        if(document.getElementById('pass').value === "admin123") {
             isAdmin = true;
-            document.getElementById('btnNewTech').style.display = 'block';
-            alert("Acceso concedido. Ahora puedes agregar, editar y eliminar.");
-        } else {
-            isAdmin = false;
-            document.getElementById('btnNewTech').style.display = 'none';
-            alert("Clave incorrecta.");
-        }
+            document.getElementById('btnNew').style.display = 'block';
+            alert("Modo Administrador Activo");
+        } else { alert("Clave incorrecta"); }
         renderCards();
     }
 
-    function renderCards(idCercano = null) {
-        const lista = document.getElementById('lista-tecnicos');
-        const query = document.getElementById('buscador').value.toLowerCase();
-        lista.innerHTML = "";
+    function renderCards(cercanoId = null) {
+        const listEl = document.getElementById('lista');
+        const search = document.getElementById('busc').value.toLowerCase();
+        listEl.innerHTML = "";
         map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
 
         dbTecnicos.forEach((t, i) => {
-            if(!t.nombre.toLowerCase().includes(query) && !t.ubi.toLowerCase().includes(query)) return;
-
-            const esCercano = (i === idCercano);
+            if(!t.nombre.toLowerCase().includes(search) && !t.ubi.toLowerCase().includes(search)) return;
+            const active = (i === cercanoId);
             const card = document.createElement('div');
-            card.className = `tech-card ${esCercano ? 'active' : ''}`;
+            card.className = `tech-card ${active ? 'active' : ''}`;
             card.innerHTML = `
                 <h4>${t.nombre}</h4>
                 <p>📍 ${t.ubi}</p>
                 <p>🛠️ ${t.esp}</p>
-                <div class="admin-controls" style="display:${isAdmin ? 'flex' : 'none'}">
-                    <button class="btn-sm btn-edit" onclick="editarTecnico(${i})">✏️</button>
-                    <button class="btn-sm btn-del" onclick="eliminarTecnico(${i})">🗑️</button>
-                </div>
-            `;
-            lista.appendChild(card);
-            
+                <div class="admin-btns" style="display:${isAdmin ? 'flex' : 'none'}">
+                    <button class="btn-sm" style="background:#ffc107; color:black" onclick="abrirModal(${i})">✏️</button>
+                    <button class="btn-sm" style="background:#dc3545" onclick="eliminar(${i})">🗑️</button>
+                </div>`;
+            card.onclick = (e) => { if(e.target.tagName !== 'BUTTON') map.flyTo([t.lat, t.lng], 13); };
+            listEl.appendChild(card);
             L.marker([t.lat, t.lng], {
                 icon: L.icon({
-                    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${esCercano ? 'green' : 'blue'}.png`,
+                    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${active ? 'green' : 'blue'}.png`,
                     iconSize: [25, 41], iconAnchor: [12, 41]
                 })
             }).addTo(map).bindPopup(t.nombre);
         });
     }
 
-    function abrirModal(index = -1) {
-        document.getElementById('modalReg').style.display = 'block';
-        document.getElementById('editIndex').value = index;
-        document.getElementById('modalTitle').innerText = index === -1 ? "Registrar Técnico" : "Editar Técnico";
-        
-        if(index !== -1) {
-            const t = dbTecnicos[index];
-            document.getElementById('rNombre').value = t.nombre;
+    function abrirModal(idx = -1) {
+        document.getElementById('modal').style.display = 'block';
+        document.getElementById('eIdx').value = idx;
+        if(idx !== -1) {
+            const t = dbTecnicos[idx];
+            document.getElementById('rNom').value = t.nombre;
             document.getElementById('rUbi').value = t.ubi;
             document.getElementById('rEsp').value = t.esp;
             document.getElementById('rTel').value = t.tel;
             document.getElementById('rLat').value = t.lat;
             document.getElementById('rLng').value = t.lng;
         }
-
         if(!mapAdmin) {
-            mapAdmin = L.map('mapAdmin').setView([10.9, -74.7], 11);
+            mapAdmin = L.map('mapAdmin').setView([10.96, -74.79], 11);
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(mapAdmin);
-            markerAdmin = L.marker([10.9, -74.7], {draggable:true}).addTo(mapAdmin);
+            markerAdmin = L.marker([10.96, -74.79], {draggable:true}).addTo(mapAdmin);
             mapAdmin.on('click', e => {
                 markerAdmin.setLatLng(e.latlng);
                 document.getElementById('rLat').value = e.latlng.lat.toFixed(6);
@@ -165,36 +166,28 @@
         }
     }
 
-    function guardarTecnico() {
-        const index = parseInt(document.getElementById('editIndex').value);
+    async function guardar() {
+        const idx = document.getElementById('eIdx').value;
         const data = {
-            nombre: document.getElementById('rNombre').value,
+            nombre: document.getElementById('rNom').value,
             ubi: document.getElementById('rUbi').value,
             esp: document.getElementById('rEsp').value,
             tel: document.getElementById('rTel').value,
             lat: parseFloat(document.getElementById('rLat').value),
             lng: parseFloat(document.getElementById('rLng').value)
         };
-
-        if(index === -1) dbTecnicos.push(data);
-        else dbTecnicos[index] = data;
-
-        renderCards();
+        if(idx === "-1") await window.fbAdd(data);
+        else await window.fbUpdate(dbTecnicos[idx].id, data);
         cerrarModal();
     }
 
-    function eliminarTecnico(i) {
-        if(confirm("¿Estás seguro de eliminar este registro?")) {
-            dbTecnicos.splice(i, 1);
-            renderCards();
-        }
+    async function eliminar(i) {
+        if(confirm("¿Eliminar registro?")) await window.fbDelete(dbTecnicos[i].id);
     }
 
-    function editarTecnico(i) { abrirModal(i); }
-
-    function cerrarModal() { 
-        document.getElementById('modalReg').style.display = 'none';
-        document.querySelectorAll('input:not([type=password])').forEach(i => i.value = "");
+    function cerrarModal() {
+        document.getElementById('modal').style.display = 'none';
+        document.querySelectorAll('input:not(#pass)').forEach(i => i.value = "");
     }
 
     map.on('click', e => {
@@ -203,10 +196,15 @@
             let d = Math.sqrt(Math.pow(e.latlng.lat - t.lat, 2) + Math.pow(e.latlng.lng - t.lng, 2));
             if(d < min) { min = d; idx = i; }
         });
-        renderCards(idx);
+        if(idx !== -1) renderCards(idx);
     });
 
-    renderCards();
+    function exportarExcel() {
+        const ws = XLSX.utils.json_to_sheet(dbTecnicos);
+        const wb = XLSX.utils.book_new();
+        XLSX.book_append_sheet(wb, ws, "Tecnicos");
+        XLSX.writeFile(wb, "Agenda_Nacional_Datatrack.xlsx");
+    }
 </script>
 </body>
 </html>
