@@ -2,65 +2,83 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>SNT Datatrack | Gestión Nacional</title>
+    <title>SNT Datatrack | Gestión Inteligente</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
         :root { --primary: #002b5c; --accent: #00d2ff; --success: #28a745; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .header { background: var(--primary); color: white; padding: 12px 25px; display: flex; justify-content: space-between; align-items: center; z-index: 1100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .auth-zone { display: flex; gap: 8px; align-items: center; }
-        .main-content { display: flex; flex: 1; position: relative; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Header */
+        .header { background: var(--primary); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1100; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .auth-zone { display: flex; gap: 10px; align-items: center; }
+        
+        /* Mapa */
         #mapAgenda { flex: 1; z-index: 1; }
-        .floating-panel { position: absolute; top: 20px; right: 20px; width: 340px; max-height: 85%; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-radius: 15px; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; padding: 15px; }
-        .tech-list { overflow-y: auto; flex: 1; margin-top: 10px; }
-        .tech-card { background: white; border-radius: 10px; padding: 12px; margin-bottom: 10px; border: 1px solid #eee; cursor: pointer; transition: 0.3s; }
-        .tech-card.active { border: 2px solid var(--success); background: #f0fff4; }
-        .admin-btns { display: none; margin-top: 8px; justify-content: flex-end; gap: 5px; border-top: 1px solid #eee; padding-top: 5px; }
-        .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 4px; cursor: pointer; border: none; font-weight: bold; color: white; }
-        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); }
-        .modal-content { background: white; margin: 5% auto; padding: 20px; width: 400px; border-radius: 15px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; }
+
+        /* Tarjeta Flotante de Cercanía */
+        .floating-card { 
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 320px; background: white; border-radius: 15px; padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000;
+            display: none; border-left: 8px solid var(--accent);
+        }
+        .floating-card h4 { margin: 0 0 5px 0; color: var(--primary); }
+        .floating-card p { margin: 2px 0; font-size: 14px; color: #444; }
+        .close-card { position: absolute; top: 10px; right: 10px; cursor: pointer; font-weight: bold; }
+
+        /* Modales */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); overflow-y: auto; }
+        .modal-content { background: white; margin: 2% auto; padding: 25px; width: 90%; max-width: 500px; border-radius: 15px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; width: 100%; box-sizing: border-box; }
+        
+        .btn { padding: 10px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        .btn-success { background: var(--success); }
+        .btn-accent { background: var(--accent); color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div><b>DATATRACK</b> | Agenda Nacional de Técnicos</div>
+    <div><b>DATATRACK</b> | SNT Nacional</div>
     <div class="auth-zone">
-        <button id="btnNew" class="btn-sm" style="background:var(--accent); display:none;" onclick="abrirModal()">➕ Nuevo Técnico</button>
-        <button class="btn-sm" style="background:#217346" onclick="exportarExcel()">📊 Exportar Excel</button>
-        <input type="password" id="pass" placeholder="Clave" style="width: 70px; padding: 4px;">
-        <button class="btn-sm" style="background:#6c757d" onclick="login()">Entrar</button>
+        <button class="btn btn-accent" onclick="exportarExcel()">📊 Descargar Excel</button>
+        <button id="btnNew" class="btn" style="background:white; color:var(--primary); display:none;" onclick="abrirModal()">➕ Nuevo Técnico</button>
+        <input type="password" id="pass" placeholder="Clave" style="width: 80px; padding: 5px; border-radius: 4px; border: none;">
+        <button class="btn" style="background:#6c757d" onclick="login()">OK</button>
     </div>
 </div>
 
-<div class="main-content">
-    <div id="mapAgenda"></div>
-    <div class="floating-panel">
-        <input type="text" id="busc" style="padding:10px; border-radius:8px; border:1px solid #ddd" placeholder="🔍 Buscar ciudad o técnico..." onkeyup="renderCards()">
-        <div class="tech-list" id="lista"></div>
-    </div>
+<div id="mapAgenda"></div>
+
+<div id="nearCard" class="floating-card">
+    <span class="close-card" onclick="this.parentElement.style.display='none'">×</span>
+    <small style="color:var(--success); font-weight: bold;">TÉCNICO MÁS CERCANO</small>
+    <h4 id="nName">-</h4>
+    <p id="nUbi">📍 -</p>
+    <p id="nEsp">🔧 -</p>
+    <p id="nDist" style="color:var(--accent); font-weight:bold; margin-top:8px;"></p>
+    <a id="nTel" href="#" style="display:block; margin-top:10px; color:var(--success); text-decoration:none; font-weight:bold;">📞 Llamar ahora</a>
 </div>
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3 style="margin:0 0 10px 0">Datos del Técnico</h3>
-        <div id="mapAdmin" style="height: 180px; border-radius: 8px; margin-bottom: 15px; background:#eee;"></div>
+        <h3>Gestión de Personal</h3>
+        <div id="mapAdmin" style="height: 180px; border-radius: 10px; margin-bottom: 15px; background:#eee;"></div>
         <div class="form-grid">
             <input type="hidden" id="eIdx">
-            <input type="text" id="rNom" style="grid-column: span 2;" placeholder="Nombre">
+            <input type="text" id="rNom" style="grid-column: span 2;" placeholder="Nombre Completo">
             <input type="text" id="rUbi" placeholder="Ciudad">
             <input type="text" id="rEsp" placeholder="Especialidad">
             <input type="text" id="rTel" style="grid-column: span 2;" placeholder="Teléfono">
             <input type="text" id="rLat" placeholder="Latitud" readonly>
             <input type="text" id="rLng" placeholder="Longitud" readonly>
         </div>
-        <button class="btn-sm" style="background:var(--success); width:100%; margin-top:15px; padding:12px;" onclick="guardar()">💾 GUARDAR Y CERRAR</button>
-        <button class="btn-sm" style="background:#666; width:100%; margin-top:5px;" onclick="cerrarModal()">CANCELAR</button>
+        <button class="btn btn-success" style="width:100%; margin-top:20px; padding:15px;" onclick="guardar()">💾 GUARDAR EN NUBE</button>
+        <button class="btn" style="background:#666; width:100%; margin-top:8px;" onclick="cerrarModal()">CANCELAR</button>
     </div>
 </div>
 
@@ -83,12 +101,11 @@
 
     onSnapshot(tecCol, (snap) => {
         window.dbTecnicos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        window.renderCards();
+        window.actualizarMapa();
     });
 
     window.fbAdd = (data) => addDoc(tecCol, data);
     window.fbUpdate = (id, data) => updateDoc(doc(db, "tecnicos_nacional", id), data);
-    window.fbDelete = (id) => deleteDoc(doc(db, "tecnicos_nacional", id));
 </script>
 
 <script>
@@ -98,90 +115,86 @@
 
     let mapAdmin, markerAdmin;
 
+    // Lógica de Técnico Cercano al hacer clic en el mapa
+    map.on('click', function(e) {
+        if(window.dbTecnicos.length === 0) return;
+        
+        let cercano = null;
+        let minDist = Infinity;
+
+        window.dbTecnicos.forEach(t => {
+            let d = map.distance(e.latlng, [t.lat, t.lng]);
+            if(d < minDist) {
+                minDist = d;
+                cercano = t;
+            }
+        });
+
+        if(cercano) {
+            document.getElementById('nearCard').style.display = 'block';
+            document.getElementById('nName').innerText = cercano.nombre;
+            document.getElementById('nUbi').innerText = "📍 " + cercano.ubi;
+            document.getElementById('nEsp').innerText = "🔧 " + cercano.esp;
+            document.getElementById('nDist').innerText = "A " + (minDist/1000).toFixed(2) + " km de tu clic";
+            document.getElementById('nTel').href = "tel:" + cercano.tel;
+        }
+    });
+
+    function actualizarMapa() {
+        map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
+        window.dbTecnicos.forEach(t => {
+            L.marker([t.lat, t.lng]).addTo(map).bindPopup(`<b>${t.nombre}</b><br>${t.esp}`);
+        });
+    }
+
     function login() {
         if(document.getElementById('pass').value === "admin123") {
             isAdmin = true;
             document.getElementById('btnNew').style.display = 'block';
-            alert("Acceso administrador activo");
-        } else { alert("Clave incorrecta"); }
-        renderCards();
-    }
-
-    function renderCards(cercanoId = null) {
-        const listEl = document.getElementById('lista');
-        const search = document.getElementById('busc').value.toLowerCase();
-        listEl.innerHTML = "";
-        map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
-
-        dbTecnicos.forEach((t, i) => {
-            if(!t.nombre.toLowerCase().includes(search) && !t.ubi.toLowerCase().includes(search)) return;
-            const card = document.createElement('div');
-            card.className = `tech-card ${i === cercanoId ? 'active' : ''}`;
-            card.innerHTML = `<h4>${t.nombre}</h4><p>📍 ${t.ubi}</p><div class="admin-btns" style="display:${isAdmin ? 'flex' : 'none'}"><button class="btn-sm" style="background:#ffc107; color:black" onclick="abrirModal(${i})">✏️</button><button class="btn-sm" style="background:#dc3545" onclick="eliminar(${i})">🗑️</button></div>`;
-            card.onclick = (e) => { if(e.target.tagName !== 'BUTTON') map.flyTo([t.lat, t.lng], 13); };
-            listEl.appendChild(card);
-            L.marker([t.lat, t.lng]).addTo(map).bindPopup(t.nombre);
-        });
-    }
-
-    function abrirModal(idx = -1) {
-        document.getElementById('modal').style.display = 'block';
-        document.getElementById('eIdx').value = idx;
-        if(idx !== -1) {
-            const t = dbTecnicos[idx];
-            document.getElementById('rNom').value = t.nombre; document.getElementById('rUbi').value = t.ubi;
-            document.getElementById('rEsp').value = t.esp; document.getElementById('rTel').value = t.tel;
-            document.getElementById('rLat').value = t.lat; document.getElementById('rLng').value = t.lng;
+            alert("Modo Admin: Ahora puedes agregar técnicos haciendo clic en el mapa.");
         }
+    }
+
+    function abrirModal() {
+        document.getElementById('modal').style.display = 'block';
         setTimeout(() => {
             if(!mapAdmin) {
                 mapAdmin = L.map('mapAdmin').setView([10.96, -74.79], 11);
                 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(mapAdmin);
                 markerAdmin = L.marker([10.96, -74.79], {draggable:true}).addTo(mapAdmin);
-                mapAdmin.on('click', e => {
-                    markerAdmin.setLatLng(e.latlng);
-                    document.getElementById('rLat').value = e.latlng.lat.toFixed(6);
-                    document.getElementById('rLng').value = e.latlng.lng.toFixed(6);
+                mapAdmin.on('click', ev => {
+                    markerAdmin.setLatLng(ev.latlng);
+                    document.getElementById('rLat').value = ev.latlng.lat.toFixed(6);
+                    document.getElementById('rLng').value = ev.latlng.lng.toFixed(6);
                 });
             } else { mapAdmin.invalidateSize(); }
         }, 300);
     }
 
     async function guardar() {
-        const idx = document.getElementById('eIdx').value;
         const data = {
-            nombre: document.getElementById('rNom').value, ubi: document.getElementById('rUbi').value,
-            esp: document.getElementById('rEsp').value, tel: document.getElementById('rTel').value,
-            lat: parseFloat(document.getElementById('rLat').value), lng: parseFloat(document.getElementById('rLng').value)
+            nombre: document.getElementById('rNom').value,
+            ubi: document.getElementById('rUbi').value,
+            esp: document.getElementById('rEsp').value,
+            tel: document.getElementById('rTel').value,
+            lat: parseFloat(document.getElementById('rLat').value),
+            lng: parseFloat(document.getElementById('rLng').value)
         };
-        try {
-            if(idx === "-1") await window.fbAdd(data);
-            else await window.fbUpdate(dbTecnicos[idx].id, data);
-            cerrarModal();
-        } catch (e) { alert("Error al guardar."); }
+        await window.fbAdd(data);
+        cerrarModal();
     }
 
-    async function eliminar(i) { if(confirm("¿Eliminar?")) await window.fbDelete(dbTecnicos[i].id); }
-    function cerrarModal() { document.getElementById('modal').style.display = 'none'; document.querySelectorAll('input:not(#pass)').forEach(i => i.value = ""); }
+    function cerrarModal() { document.getElementById('modal').style.display = 'none'; }
 
-    // FUNCIÓN DE EXCEL CORREGIDA
     function exportarExcel() {
-        if(dbTecnicos.length === 0) return alert("No hay datos para exportar");
-        
-        // Limpiamos los datos para que el Excel se vea profesional
-        const datosLimpios = dbTecnicos.map(t => ({
-            Nombre: t.nombre,
-            Ubicación: t.ubi,
-            Especialidad: t.esp,
-            Teléfono: t.tel,
-            Latitud: t.lat,
-            Longitud: t.lng
+        if(window.dbTecnicos.length === 0) return alert("No hay datos");
+        const datos = window.dbTecnicos.map(t => ({
+            Nombre: t.nombre, Ciudad: t.ubi, Especialidad: t.esp, Telefono: t.tel
         }));
-
-        const ws = XLSX.utils.json_to_sheet(datosLimpios);
+        const ws = XLSX.utils.json_to_sheet(datos);
         const wb = XLSX.utils.book_new();
-        XLSX.book_append_sheet(wb, ws, "Tecnicos_Datatrack");
-        XLSX.writeFile(wb, "Agenda_Nacional_SNT.xlsx");
+        XLSX.book_append_sheet(wb, ws, "Tecnicos");
+        XLSX.writeFile(wb, "SNT_Datatrack_Nacional.xlsx");
     }
 </script>
 </body>
