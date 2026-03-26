@@ -290,6 +290,19 @@
         XLSX.utils.book_append_sheet(wb, ws, "Tecnicos_Datatrack");
         XLSX.writeFile(wb, "SNT_Nacional.xlsx");
     }
+    // Acceso Admin con la tecla Enter
+document.getElementById('pass').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        login();
+    }
+});
+
+// Búsqueda de técnicos con la tecla Enter
+document.getElementById('busc').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        ejecutarBusqueda();
+    }
+});
 </script>
 </body>
 </html>
