@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png">
-    <title>Datatrack | Agenda</title>
+    <title>SNT Datatrack | Agenda Nacional de Técnicos</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
     <style>
-        :root { --primary: #002b5c; --accent: #00d2ff; --success: #25d366; --danger: #ff4d4d; --bg: #f8f9fa; }
+        :root { --primary: #002b5c; --accent: #00d2ff; --success: #25d366; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
         
         .header { background: var(--primary); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
@@ -17,100 +18,71 @@
         
         #mapAgenda { flex: 1; z-index: 1; }
 
-        /* Panel de Resultados y Admin */
-        .side-panel {
-            position: absolute; top: 130px; right: 20px; width: 400px; max-height: 75vh;
-            background: white; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-            z-index: 1000; display: none; flex-direction: column; padding: 15px; border-top: 5px solid var(--primary);
-        }
-        .table-wrapper { overflow-y: auto; flex: 1; margin-top: 10px; border: 1px solid #eee; }
-        .tech-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .tech-table th { position: sticky; top: 0; background: #f4f4f4; padding: 10px; text-align: left; }
-        .tech-table td { padding: 8px; border-bottom: 1px solid #eee; }
-
-        /* Tarjeta Flotante */
-        .floating-card { 
-            position: absolute; bottom: 30px; left: 30px; width: 300px; 
-            background: white; border-radius: 15px; padding: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000;
-            display: none; border-left: 8px solid var(--accent);
+        /* Contenedor de Tarjetas Flotantes (Carrusel) */
+        .results-container {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: none; gap: 15px; padding: 10px; z-index: 1000;
+            max-width: 95vw; overflow-x: auto; scroll-behavior: smooth;
         }
         
-        .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-search { background: var(--primary); color: white; }
-        .btn-edit { background: #ffc107; color: black; padding: 4px 8px; font-size: 10px; }
-        .btn-del { background: var(--danger); color: white; padding: 4px 8px; font-size: 10px; }
-        .btn-ws { background: var(--success); color: white; text-decoration: none; display: block; text-align: center; margin-top: 12px; padding: 10px; border-radius: 8px; font-weight: bold; }
+        .floating-card { 
+            min-width: 280px; background: white; border-radius: 15px; padding: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-top: 5px solid var(--accent);
+            position: relative; flex-shrink: 0;
+        }
+
+        .card-rank { position: absolute; top: 10px; right: 15px; background: var(--primary); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+        
+        .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-ws { background: var(--success); color: white; text-decoration: none; display: block; text-align: center; margin-top: 10px; padding: 8px; border-radius: 6px; font-size: 13px; }
 
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); }
-        .modal-content { background: white; margin: 3% auto; padding: 25px; width: 90%; max-width: 450px; border-radius: 15px; }
-        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; width: 100%; margin-bottom: 12px; box-sizing: border-box; }
+        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 90%; max-width: 400px; border-radius: 12px; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; width: 100%; margin-bottom: 12px; box-sizing: border-box; }
+        
+        /* Ocultar scrollbar pero permitir scroll */
+        .results-container::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div><b>DATATRACK</b> | Agenda Nacional<h5>By: Ing Vidal<h5></div>
+    <div><b>DATATRACK</b> | Agenda Nacional de Técnicos | <b> by: Ing Vidal</b> </div>
     <div style="display:flex; gap:10px; align-items:center;">
         <button class="btn" style="background:#217346; color:white;" onclick="exportarExcel()">📊 Exportar Excel</button>
-        <button id="btnNew" class="btn" style="background:var(--accent); color:var(--primary); display:none;" onclick="abrirModal()">➕ Nuevo Registro</button>
+        <button id="btnNew" class="btn" style="background:var(--accent); display:none;" onclick="abrirModal()">➕ Nuevo</button>
         <input type="password" id="pass" placeholder="Admin" style="width: 70px; height: 30px; margin:0;">
         <button class="btn" style="background:#6c757d; color:white;" onclick="login()">Entrar</button>
     </div>
 </div>
 
 <div class="search-bar">
-    <input type="text" id="busc" placeholder="Escribe ciudad, vereda o nombre del técnico..." style="flex:1; margin:0;">
-    <button class="btn btn-search" onclick="ejecutarBusqueda()">🔍 BUSCAR TÉCNICO</button>
+    <input type="text" id="busc" placeholder="🔍 Escribe ciudad, vereda o nombre del técnico..." style="flex:1; margin:0;">
+    <button class="btn" style="background:var(--primary); color:white;" onclick="ejecutarBusqueda()">BUSCAR</button>
 </div>
 
 <div id="mapAgenda"></div>
 
-<div id="sidePanel" class="side-panel">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 id="panelTitle" style="margin:0; font-size:16px;">Base de Datos</h3>
-        <span style="cursor:pointer; font-size:20px;" onclick="cerrarPanel()">×</span>
-    </div>
-    <div class="table-wrapper">
-        <table class="tech-table">
-            <thead>
-                <tr><th>Nombre</th><th>Ciudad</th><th>Acciones</th></tr>
-            </thead>
-            <tbody id="resBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<div id="nearCard" class="floating-card">
-    <span style="float:right; cursor:pointer;" onclick="this.parentElement.style.display='none'">×</span>
-    <small id="distTag" style="color:var(--primary); font-weight:bold;"></small>
-    <h3 id="nName" style="margin:8px 0; color:var(--primary);">-</h3>
-    <p id="nUbi" style="margin:2px 0; font-size:14px; color:#555;">📍 -</p>
-    <p id="nEsp" style="margin:2px 0; font-size:14px; color:#555;">🔧 -</p>
-    <a id="nWS" href="#" target="_blank" class="btn-ws">💬 Contactar por WhatsApp</a>
-</div>
+<div id="resultsWrapper" class="results-container"></div>
 
 <div id="modal" class="modal">
     <div class="modal-content">
-        <h3 id="mTitle">Registrar Técnico</h3>
-        <input type="hidden" id="eId">
+        <h3>Registrar Técnico</h3>
         <input type="text" id="rNom" placeholder="Nombre completo">
-        <input type="text" id="rUbi" placeholder="Ciudad de residencia">
-        <input type="text" id="rEsp" placeholder="Especialidad (GPS, Cámaras, IoT)">
-        <input type="text" id="rTel" placeholder="WhatsApp (ej: 57310...)">
-        <div id="mapAdmin" style="height: 160px; background:#eee; margin-bottom:12px; border-radius:10px;"></div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <input type="text" id="rLat" placeholder="Latitud" readonly>
-            <input type="text" id="rLng" placeholder="Longitud" readonly>
-        </div>
-        <button class="btn" style="background:var(--primary); color:white; width:100%; padding:15px; margin-top:10px;" onclick="guardar()">💾 GUARDAR CAMBIOS</button>
+        <input type="text" id="rUbi" placeholder="Ciudad">
+        <input type="text" id="rEsp" placeholder="Especialidad">
+        <input type="text" id="rTel" placeholder="WhatsApp (ej: 57300...)">
+        <div id="mapAdmin" style="height: 150px; background:#eee; margin-bottom:12px; border-radius:10px;"></div>
+        <input type="text" id="rLat" placeholder="Latitud" readonly>
+        <input type="text" id="rLng" placeholder="Longitud" readonly>
+        <button class="btn" style="background:var(--primary); color:white; width:100%; padding:15px;" onclick="guardar()">💾 GUARDAR EN FIREBASE</button>
         <button class="btn" style="background:#666; color:white; width:100%; margin-top:5px;" onclick="cerrarModal()">CANCELAR</button>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAjh_N7X4nBi6GPnWjxegPX2SKZf7PxW-w",
@@ -128,11 +100,9 @@
     onSnapshot(tecCol, (snap) => {
         window.dbTecnicos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         window.actualizarMapa();
-        if(isAdmin) window.mostrarTablaAdmin();
     });
 
-    window.fbSave = (id, data) => id ? updateDoc(doc(db, "tecnicos_nacional", id), data) : addDoc(tecCol, data);
-    window.fbDelete = (id) => deleteDoc(doc(db, "tecnicos_nacional", id));
+    window.fbAdd = (data) => addDoc(tecCol, data);
 </script>
 
 <script>
@@ -140,112 +110,64 @@
     const map = L.map('mapAgenda').setView([10.96, -74.79], 6);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
-    // 1. Lógica de Búsqueda Flexible (Geocodificación + Cercanía)
+    function actualizarMapa() {
+        map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
+        window.dbTecnicos.forEach(t => { L.marker([t.lat, t.lng]).addTo(map).bindPopup(`<b>${t.nombre}</b><br>${t.ubi}`); });
+    }
+
+    // Lógica para encontrar los 3 más cercanos
+    function mostrarTop3(lat, lng, titulo) {
+        if(window.dbTecnicos.length === 0) return;
+
+        // Calcular distancias y ordenar
+        const calculados = window.dbTecnicos.map(t => ({
+            ...t,
+            dist: map.distance([lat, lng], [t.lat, t.lng])
+        })).sort((a, b) => a.dist - b.dist).slice(0, 3);
+
+        const wrapper = document.getElementById('resultsWrapper');
+        wrapper.innerHTML = "";
+        wrapper.style.display = 'flex';
+
+        calculados.forEach((t, i) => {
+            const card = document.createElement('div');
+            card.className = "floating-card";
+            card.innerHTML = `
+                <div class="card-rank">#${i+1}</div>
+                <small style="color:var(--primary); font-weight:bold;">${i === 0 ? 'MÁS CERCANO' : 'OPCIÓN APOYO'}</small>
+                <h3 style="margin:5px 0; font-size:16px;">${t.nombre}</h3>
+                <p style="margin:2px 0; font-size:13px;">📍 ${t.ubi} (${(t.dist/1000).toFixed(1)} km)</p>
+                <p style="margin:2px 0; font-size:13px;">🔧 ${t.esp}</p>
+                <a href="https://wa.me/${t.tel}?text=Hola%20${t.nombre},%20requerimos%20tu%20apoyo%20para%20un%20servicio..." 
+                   target="_blank" class="btn-ws">💬 Contactar</a>
+            `;
+            card.onclick = () => map.flyTo([t.lat, t.lng], 13);
+            wrapper.appendChild(card);
+        });
+
+        map.flyTo([lat, lng], 10);
+    }
+
+    map.on('click', e => mostrarTop3(e.latlng.lat, e.latlng.lng, "tu clic"));
+
     async function ejecutarBusqueda() {
         const query = document.getElementById('busc').value;
-        if(query.length < 3) return alert("Escribe un nombre o ciudad válida");
-
-        // Primero buscamos por nombre en nuestra DB
-        const porNombre = window.dbTecnicos.find(t => t.nombre.toLowerCase().includes(query.toLowerCase()));
+        if(query.length < 3) return alert("Escribe una ciudad o nombre");
         
-        if(porNombre) {
-            enfocarYMostrar(porNombre, 0);
-            return;
-        }
-
-        // Si no es nombre, buscamos la ubicación en el mapa (OpenStreetMap)
         try {
             const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query},Colombia`);
             const data = await resp.json();
-            
             if(data.length > 0) {
-                const latBusqueda = parseFloat(data[0].lat);
-                const lngBusqueda = parseFloat(data[0].lon);
-                encontrarMasCercano(latBusqueda, lngBusqueda, query);
-            } else {
-                alert("No encontramos esa ubicación. Intenta con una ciudad principal cercana.");
-            }
-        } catch(e) { alert("Error al buscar ubicación"); }
+                mostrarTop3(parseFloat(data[0].lat), parseFloat(data[0].lon), query);
+            } else { alert("Ubicación no encontrada."); }
+        } catch(e) { alert("Error en búsqueda."); }
     }
 
-    function encontrarMasCercano(lat, lng, nombreUbi) {
-        let cercano = null; let minDist = Infinity;
-        window.dbTecnicos.forEach(t => {
-            let d = map.distance([lat, lng], [t.lat, t.lng]);
-            if(d < minDist) { minDist = d; cercano = t; }
-        });
-
-        if(cercano) {
-            enfocarYMostrar(cercano, minDist, nombreUbi);
-        }
-    }
-
-    function enfocarYMostrar(t, dist, origen = "") {
-        map.flyTo([t.lat, t.lng], 12);
-        const card = document.getElementById('nearCard');
-        card.style.display = 'block';
-        document.getElementById('distTag').innerText = dist === 0 ? "RESULTADO EXACTO" : `EL MÁS CERCANO A ${origen.toUpperCase()}`;
-        document.getElementById('nName').innerText = t.nombre;
-        document.getElementById('nUbi').innerText = `📍 En ${t.ubi} (${(dist/1000).toFixed(1)} km)`;
-        document.getElementById('nEsp').innerText = `🔧 Especialidad: ${t.esp}`;
-        document.getElementById('nWS').href = `https://wa.me/${t.tel}?text=Hola%20${t.nombre},%20te%20contacto%20desde%20Datatrack...`;
-    }
-
-    // 2. Vista de Admin con Tabla Completa
-    function login() {
-        if(document.getElementById('pass').value === "admin123") {
-            isAdmin = true;
-            document.getElementById('btnNew').style.display = 'block';
-            mostrarTablaAdmin();
-        } else { alert("Clave incorrecta"); }
-    }
-
-    function mostrarTablaAdmin() {
-        const panel = document.getElementById('sidePanel');
-        const body = document.getElementById('resBody');
-        panel.style.display = 'flex';
-        document.getElementById('panelTitle').innerText = "Gestión de Técnicos (" + window.dbTecnicos.length + ")";
-        
-        body.innerHTML = "";
-        window.dbTecnicos.forEach((t, i) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><b>${t.nombre}</b></td>
-                <td>${t.ubi}</td>
-                <td>
-                    <button class="btn-edit" onclick="abrirModal(${i})">✏️</button>
-                    <button class="btn-del" onclick="eliminarRegistro('${t.id}')">🗑️</button>
-                </td>`;
-            body.appendChild(tr);
-        });
-    }
-
-    function actualizarMapa() {
-        map.eachLayer(l => { if(l instanceof L.Marker) map.removeLayer(l); });
-        window.dbTecnicos.forEach(t => {
-            L.marker([t.lat, t.lng]).addTo(map).bindPopup(`<b>${t.nombre}</b><br>${t.ubi}`);
-        });
-    }
-
-    // 3. Edición y Eliminación
+    function login() { if(document.getElementById('pass').value === "admin123") { isAdmin = true; document.getElementById('btnNew').style.display = 'block'; alert("Acceso Admin"); } }
+    
     let mapAdmin, markerAdmin;
-    function abrirModal(idx = -1) {
+    function abrirModal() {
         document.getElementById('modal').style.display = 'block';
-        if(idx !== -1) {
-            const t = window.dbTecnicos[idx];
-            document.getElementById('eId').value = t.id;
-            document.getElementById('rNom').value = t.nombre;
-            document.getElementById('rUbi').value = t.ubi;
-            document.getElementById('rEsp').value = t.esp;
-            document.getElementById('rTel').value = t.tel;
-            document.getElementById('rLat').value = t.lat;
-            document.getElementById('rLng').value = t.lng;
-            document.getElementById('mTitle').innerText = "Editar Técnico";
-        } else {
-            document.getElementById('mTitle').innerText = "Nuevo Registro";
-            document.querySelectorAll('#modal input').forEach(i => i.value = "");
-        }
-
         setTimeout(() => {
             if(!mapAdmin) {
                 mapAdmin = L.map('mapAdmin').setView([10.96, -74.79], 10);
@@ -256,54 +178,20 @@
                     document.getElementById('rLat').value = ev.latlng.lat.toFixed(6);
                     document.getElementById('rLng').value = ev.latlng.lng.toFixed(6);
                 });
-            } else {
-                const lat = document.getElementById('rLat').value || 10.96;
-                const lng = document.getElementById('rLng').value || -74.79;
-                mapAdmin.setView([lat, lng], 10);
-                markerAdmin.setLatLng([lat, lng]);
             }
         }, 300);
     }
 
     async function guardar() {
-        const id = document.getElementById('eId').value;
-        const data = {
-            nombre: document.getElementById('rNom').value, ubi: document.getElementById('rUbi').value,
-            esp: document.getElementById('rEsp').value, tel: document.getElementById('rTel').value,
-            lat: parseFloat(document.getElementById('rLat').value), lng: parseFloat(document.getElementById('rLng').value)
-        };
-        await window.fbSave(id, data);
+        const data = { nombre: document.getElementById('rNom').value, ubi: document.getElementById('rUbi').value, esp: document.getElementById('rEsp').value, tel: document.getElementById('rTel').value, lat: parseFloat(document.getElementById('rLat').value), lng: parseFloat(document.getElementById('rLng').value) };
+        await window.fbAdd(data);
         cerrarModal();
     }
-
-    async function eliminarRegistro(id) {
-        if(confirm("¿Seguro que deseas eliminar este técnico de la base nacional?")) {
-            await window.fbDelete(id);
-        }
-    }
-
     function cerrarModal() { document.getElementById('modal').style.display = 'none'; }
-    function cerrarPanel() { document.getElementById('sidePanel').style.display = 'none'; }
+    function exportarExcel() { const ws = XLSX.utils.json_to_sheet(window.dbTecnicos.map(t => ({Nombre: t.nombre, Ciudad: t.ubi, Especialidad: t.esp, Telefono: t.tel}))); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Tecnicos_Datatrack"); XLSX.writeFile(wb, "SNT_Nacional.xlsx"); }
 
-    function exportarExcel() {
-        const ws = XLSX.utils.json_to_sheet(window.dbTecnicos.map(t => ({Nombre: t.nombre, Ciudad: t.ubi, Especialidad: t.esp, Telefono: t.tel})));
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Tecnicos_Datatrack");
-        XLSX.writeFile(wb, "SNT_Nacional.xlsx");
-    }
-    // Acceso Admin con la tecla Enter
-document.getElementById('pass').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        login();
-    }
-});
-
-// Búsqueda de técnicos con la tecla Enter
-document.getElementById('busc').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        ejecutarBusqueda();
-    }
-});
+    document.getElementById('pass').addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
+    document.getElementById('busc').addEventListener('keypress', e => { if (e.key === 'Enter') ejecutarBusqueda(); });
 </script>
 </body>
 </html>
